@@ -4,44 +4,21 @@ import pandas as pd
 import requests
 import os
 
-# ---- Large File Downloader from Google Drive ----
-def download_large_file_from_google_drive(file_id, destination):
-    URL = "https://docs.google.com/uc?export=download"
+# ---- Hugging Face File URLs ----
+MOVIES_URL = "https://huggingface.co/tt49139/assets/resolve/main/movies.pkl"
+SIMILARITY_URL = "https://huggingface.co/tt49139/assets/resolve/main/similarity.pkl"
 
-    session = requests.Session()
-    response = session.get(URL, params={'id': file_id}, stream=True)
-    token = get_confirm_token(response)
+# ---- Download and cache files locally ----
+def download_file(url, filename):
+    if not os.path.exists(filename):
+        response = requests.get(url, stream=True)
+        with open(filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
 
-    if token:
-        params = {'id': file_id, 'confirm': token}
-        response = session.get(URL, params=params, stream=True)
-
-    save_response_content(response, destination)
-
-
-def get_confirm_token(response):
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            return value
-    return None
-
-
-def save_response_content(response, destination):
-    CHUNK_SIZE = 32768
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
-            if chunk:  # filter out keep-alive chunks
-                f.write(chunk)
-
-# ---- Google Drive file IDs ----
-movies_id = "1UaPI3VrmLAikh-7G90hCa_UMj9vygzXF"
-similarity_id = "1deakAkH-TeHzsb9ybeBaBNKLkbs6CoJb"
-
-# ---- Download files if not already present ----
-if not os.path.exists("movies.pkl"):
-    download_large_file_from_google_drive(movies_id, "movies.pkl")
-if not os.path.exists("similarity.pkl"):
-    download_large_file_from_google_drive(similarity_id, "similarity.pkl")
+download_file(MOVIES_URL, "movies.pkl")
+download_file(SIMILARITY_URL, "similarity.pkl")
 
 # ---- Load data ----
 movies = pickle.load(open("movies.pkl", "rb"))
