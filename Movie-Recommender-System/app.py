@@ -1,86 +1,56 @@
 import streamlit as st
 import pickle
 import pandas as pd
-import requests
-import os
 from huggingface_hub import hf_hub_download
 
-# --- Page config ---
+# --- Page setup ---
 st.set_page_config(page_title="🎬 Movie Recommender", layout="wide")
 st.title("🎬 Movie Recommender System")
 
-# --- Download .pkl files from Hugging Face (only once) ---
+# --- Load pickles from Hugging Face ---
 @st.cache_resource
-def load_pickles():
+def load_data():
     try:
         movies_path = hf_hub_download(repo_id="tt49139/assets", filename="movies.pkl")
         similarity_path = hf_hub_download(repo_id="tt49139/assets", filename="similarity.pkl")
 
-        with open(movies_path, 'rb') as f:
+        with open(movies_path, "rb") as f:
             movies = pickle.load(f)
 
-        with open(similarity_path, 'rb') as f:
+        with open(similarity_path, "rb") as f:
             similarity = pickle.load(f)
 
         return movies, similarity
     except Exception as e:
-        st.error(f"❌ Failed to load pickle files: {e}")
+        st.error(f"❌ Failed to load data: {e}")
         st.stop()
 
-movies, similarity = load_pickles()
+movies, similarity = load_data()
 
-# --- Convert movies to DataFrame if needed ---
-if isinstance(movies, pd.DataFrame):
-    movie_list = movies['title'].values
-else:
-    movie_list = [movie['title'] for movie in movies]
+# --- Movie list ---
+movie_list = movies['title'].values
 
-# --- TMDB API Setup ---
-API_KEY = os.getenv("TMDB_API_KEY")
-
-def fetch_poster(movie_id):
-    if not API_KEY:
-        return ""
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return f"https://image.tmdb.org/t/p/w500{data['poster_path']}"
-    return ""
-
+# --- Recommendation logic ---
 def recommend(movie):
     if movie not in movie_list:
-        return [], [], []
+        return []
+
     index = list(movie_list).index(movie)
     distances = similarity[index]
     movie_indices = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
 
-    recommended_movies = []
-    recommended_posters = []
-    recommended_ids = []
-
-    for i in movie_indices:
-        movie_id = movies.iloc[i[0]].movie_id
-        recommended_movies.append(movies.iloc[i[0]].title)
-        recommended_posters.append(fetch_poster(movie_id))
-        recommended_ids.append(movie_id)
-
-    return recommended_movies, recommended_posters, recommended_ids
+    recommendations = [movies.iloc[i[0]].title for i in movie_indices]
+    return recommendations
 
 # --- UI ---
-selected_movie_name = st.selectbox("Search a movie", movie_list)
+selected_movie = st.selectbox("Choose a movie to get recommendations:", movie_list)
 
-if st.button("Show Recommendation"):
-    names, posters, ids = recommend(selected_movie_name)
+if st.button("Show Recommendations"):
+    recommendations = recommend(selected_movie)
 
-    if not names:
+    if not recommendations:
         st.warning("No recommendations found.")
     else:
-        cols = st.columns(5)
-        for i in range(5):
-            with cols[i]:
-                st.text(names[i])
-                if posters[i]:
-                    st.image(posters[i])
-                else:
-                    st.write("Poster not found.")
+        st.subheader("Top 5 Recommended Movies:")
+        for movie in recommendations:
+            st.write("•", movie)
