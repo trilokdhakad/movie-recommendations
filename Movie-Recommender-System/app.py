@@ -4,25 +4,36 @@ import pandas as pd
 import requests
 import os
 
-# ---- Hugging Face File URLs ----
-MOVIES_URL = "https://huggingface.co/tt49139/assets/resolve/main/movies.pkl"
-SIMILARITY_URL = "https://huggingface.co/tt49139/assets/resolve/main/similarity.pkl"
+# ---- Hugging Face file URLs ----
+movies_url = "https://huggingface.co/tt49139/assets/resolve/main/movies.pkl"
+similarity_url = "https://huggingface.co/tt49139/assets/resolve/main/similarity.pkl"
 
-# ---- Download and cache files locally ----
-def download_file(url, filename):
-    if not os.path.exists(filename):
-        response = requests.get(url, stream=True)
-        with open(filename, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+# ---- Downloader ----
+def download_file(url, destination):
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(destination, "wb") as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+    else:
+        st.error(f"Failed to download {url}")
+        st.stop()
 
-download_file(MOVIES_URL, "movies.pkl")
-download_file(SIMILARITY_URL, "similarity.pkl")
+# ---- Download if not already present ----
+if not os.path.exists("movies.pkl"):
+    download_file(movies_url, "movies.pkl")
+if not os.path.exists("similarity.pkl"):
+    download_file(similarity_url, "similarity.pkl")
 
 # ---- Load data ----
-movies = pickle.load(open("movies.pkl", "rb"))
-similarity = pickle.load(open("similarity.pkl", "rb"))
+try:
+    with open("movies.pkl", "rb") as f:
+        movies = pickle.load(f)
+    with open("similarity.pkl", "rb") as f:
+        similarity = pickle.load(f)
+except Exception as e:
+    st.error(f"Failed to load pickle files: {e}")
+    st.stop()
 
 # ---- Streamlit UI ----
 st.set_page_config(page_title="🎬 Movie Recommender", layout="centered")
