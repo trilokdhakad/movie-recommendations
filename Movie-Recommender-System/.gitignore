@@ -1,0 +1,20 @@
+
+
+tmdb_5000_credits.csv
+tmdb_5000_movies.csv
+
+# Ignore virtual environment
+newenv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS stuff
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+movies.pkl
+similarity.pkl
